@@ -103,9 +103,15 @@ class DataDisplay extends Control:
 		var y = 0
 		draw_style_box(_stylebox_header, Rect2(x, y, size.x, _row_height))
 		draw_set_transform(_transform)
+		
+		if col_sizes.size() > 0 and col_sizes[0] <= 0:
+			draw_circle(Vector2(x + 4, y + _row_height / 2 + 1), 1, _header_font_color)
 		for i in headers.size():
+			if col_sizes[i] <= 0: continue
 			var width: int = max(col_sizes[i], 20)
-			if width <= 0: continue
+			
+			if i+1 < col_sizes.size() and col_sizes[i+1] <= 0:
+				draw_circle(Vector2(width + x + 4, y + _row_height / 2 + 1), 1, _header_font_color)
 			
 			var content_width: int = width - 2 * _cell_margin_h - _cell_gap_h
 			var content_x: int = x + _cell_margin_h
@@ -127,8 +133,8 @@ class DataDisplay extends Control:
 			var row_array = dataFunc.call(index)
 			var col = 0
 			for i in row_array.size():
+				if col_sizes[i] <= 0: continue
 				var width: int = max(col_sizes[i], 20)
-				if width <= 0: continue
 				var content_width: int = width - 2 * _cell_margin_h - _cell_gap_h
 				var content_x: int = x + _cell_margin_h
 				
@@ -156,10 +162,10 @@ class DataDisplay extends Control:
 		cell.y = floor(position.y / _row_height)
 		cell.y += _row_start_index
 		return cell
-		
-	func change_cursor(cursor: CursorShape):
-		if mouse_default_cursor_shape == cursor: return
-		mouse_default_cursor_shape = cursor
+	
+	func change_cursor(cursor: Control.CursorShape):
+		if cursor == mouse_default_cursor_shape: return
+		if cursor != -1: mouse_default_cursor_shape = cursor
 		var pos = get_global_mouse_position()
 		var e = InputEventMouseMotion.new()
 		e.global_position = pos
@@ -172,30 +178,35 @@ class DataDisplay extends Control:
 		if event is InputEventMouseButton:
 			match event.button_index:
 				MOUSE_BUTTON_WHEEL_DOWN:
+					accept_event()
 					if not event.pressed: return
 					_v_scrollbar.value += int(_v_scrollbar.page / 4.0)
-					accept_event()
 					_scrolled_y()
 				MOUSE_BUTTON_WHEEL_UP:
+					accept_event()
 					if not event.pressed: return
 					_v_scrollbar.value -= int(_v_scrollbar.page / 4.0)
-					accept_event()
 					_scrolled_y()
 				MOUSE_BUTTON_LEFT:
-					if !event.pressed:
-						resizing_col = -1
-						change_cursor(Control.CURSOR_ARROW)
-						return
 					accept_event()
+					if !event.pressed:
+						if resizing_col > -1:
+							resizing_col = -1
+							change_cursor(-1)
+						return
 					var cell = get_cell_from_position(event.position)
-					#print(event.position, cell)
 					if cell.y == -1:
 						var pos_x = event.position.x - _transform.x
 						for i in col_sizes.size():
-							var width = col_sizes[i]
+							var width = max(col_sizes[i], 20)
+							if col_sizes[i] <= 0: width = 0
 							pos_x -= width
 							if abs(pos_x) <= 3:
+								if event.double_click and (i+1) < col_sizes.size() and col_sizes[i+1] <= 0:
+									col_sizes[i+1] = 100
+									queue_redraw()
 								resizing_col = i
+								col_sizes[i] = width
 								return
 						return
 					_selection = Rect2(cell.x, cell.y, 1, 1)
@@ -203,17 +214,16 @@ class DataDisplay extends Control:
 		elif event is InputEventMouseMotion:
 			if resizing_col > -1:
 				col_sizes[resizing_col] += int(event.relative.x)
-				#col_sizes[resizing_col] = max(col_sizes[resizing_col], 20)
 				queue_redraw()
 				return
-			if event.relative == Vector2(): return
-			if event.position.y > _row_height: 
+			if event.position.y > _row_height:
 				change_cursor(Control.CURSOR_ARROW)
 				return
 			var pos_x = event.position.x - _transform.x
 			var cursor = Control.CURSOR_ARROW
 			for i in col_sizes.size():
-				var width = col_sizes[i]
+				var width = max(col_sizes[i], 20)
+				if col_sizes[i] <= 0: width = 0
 				pos_x -= width
 				if abs(pos_x) <= 3:
 					cursor = Control.CURSOR_HSIZE
