@@ -197,9 +197,14 @@ class DataDisplay extends Control:
 							if col_sizes[i] <= 0: width = 0
 							pos_x -= width
 							if abs(pos_x) <= 3:
-								if event.double_click and (i+1) < col_sizes.size() and col_sizes[i+1] <= 0:
-									col_sizes[i+1] = 100
-									queue_redraw()
+								if event.double_click:
+									if i == 0 and col_sizes[0] <= 0:
+										col_sizes[0] = 100
+										queue_redraw()
+									elif (i+1) < col_sizes.size() and col_sizes[i+1] <= 0:
+										col_sizes[i+1] = 100
+										queue_redraw()
+									return
 								resizing_col = i
 								col_sizes[i] = width
 								return
