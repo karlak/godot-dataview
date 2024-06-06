@@ -2,3 +2,4 @@
 !/addons
 /addons/*
 !/addons/godot-dataview
+*.import
