@@ -128,7 +128,6 @@ class DataDisplay extends Control:
 			index += _row_start_index
 			x = 0
 			var row_array = dataFunc.call(index)
-			var col = 0
 			for i in row_array.size():
 				if col_sizes[i] <= 0: continue
 				var width: int = max(col_sizes[i], 20)
@@ -136,14 +135,13 @@ class DataDisplay extends Control:
 				var content_x: int = x + _cell_margin_h
 				
 				var s = row_array[i]
-				if _selection.has_point(V2i.new(col, index)):
+				if _selection.has_point(V2i.new(i, index)):
 					draw_style_box(_stylebox_data_cell_selected, Rect2(x, y, width - _cell_gap_h, _row_height - _cell_gap_v))
 				else:
 					draw_style_box(_stylebox_data_cell, Rect2(x, y, width - _cell_gap_h, _row_height - _cell_gap_v))
 				if content_width > 0:
 					draw_string(_font_default, Vector2(content_x, y + text_offset_y), str(s), HORIZONTAL_ALIGNMENT_CENTER, content_width, _fontsize_default, _header_font_color,TextServer.JUSTIFICATION_CONSTRAIN_ELLIPSIS)
 				x += width
-				col += 1
 			y += _row_height
 	
 	func get_cell_from_position(position: Vector2) -> V2i:
@@ -370,3 +368,5 @@ class R2i:
 		y = _y
 		w = _w
 		h = _h
+	func _to_string():
+		return "R2i(%d,%d,%d,%d)" % [x, y, w, h]
