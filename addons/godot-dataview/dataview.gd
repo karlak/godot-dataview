@@ -148,7 +148,10 @@ class DataDisplay extends Control:
 		position -= _transform
 		position.y -= (_row_height+1)
 		var cell: V2i = V2i.new(0, -1)
-		for width in col_sizes:
+		for i in col_sizes.size():
+			var width = max(col_sizes[i], 20)
+			if col_sizes[i] <= 0: width = 0
+			width = max(0, width)
 			position.x -= width
 			if position.x <= 0: break
 			cell.x += 1
@@ -360,6 +363,8 @@ class V2i:
 	func _init(_x=0, _y=0):
 		x = _x
 		y = _y
+	func _to_string():
+		return "V2i(%d,%d)" % [x, y]
 class R2i:
 	var x: int
 	var y: int
