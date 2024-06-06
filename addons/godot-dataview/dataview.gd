@@ -25,11 +25,9 @@ class DataDisplay extends Control:
 	
 	var _width_content: float = 0
 	var _row_height: int = 30
-	#var _row_height_header: int = 30
-	#var _row_height_data: int = 30
 	var _row_start_index: int = 0
 	var _row_count: int = 0
-	var _selection = Rect2(0, 0, 1, 1)
+	var _selection: R2i = R2i.new(0,0,1,1)
 	var _transform: Vector2 = Vector2()
 	
 	var _stylebox_tmp: StyleBox = DATA_VIEW_DEFAULT.get_stylebox("tmp", "DataView")
@@ -64,7 +62,6 @@ class DataDisplay extends Control:
 		if has_theme_font_size("default", "DataView"): _fontsize_default = get_theme_font_size("default", "DataView")
 		elif get_theme_default_font_size(): _fontsize_default = get_theme_default_font_size()
 		
-		#print(_fontsize_default)
 		_row_height = int(_fontsize_default * 1.618)
 	
 	func _init(dv: DataView):
@@ -139,7 +136,7 @@ class DataDisplay extends Control:
 				var content_x: int = x + _cell_margin_h
 				
 				var s = row_array[i]
-				if _selection.has_point(Vector2(col, index)):
+				if _selection.has_point(V2i.new(col, index)):
 					draw_style_box(_stylebox_data_cell_selected, Rect2(x, y, width - _cell_gap_h, _row_height - _cell_gap_v))
 				else:
 					draw_style_box(_stylebox_data_cell, Rect2(x, y, width - _cell_gap_h, _row_height - _cell_gap_v))
@@ -149,10 +146,10 @@ class DataDisplay extends Control:
 				col += 1
 			y += _row_height
 	
-	func get_cell_from_position(position: Vector2):
+	func get_cell_from_position(position: Vector2) -> V2i:
 		position -= _transform
 		position.y -= (_row_height+1)
-		var cell = Vector2(0, -1)
+		var cell: V2i = V2i.new(0, -1)
 		for width in col_sizes:
 			position.x -= width
 			if position.x <= 0: break
@@ -209,7 +206,7 @@ class DataDisplay extends Control:
 								col_sizes[i] = width
 								return
 						return
-					_selection = Rect2(cell.x, cell.y, 1, 1)
+					_selection.set_to(cell.x, cell.y, 1, 1)
 					queue_redraw()
 		elif event is InputEventMouseMotion:
 			if resizing_col > -1:
@@ -354,29 +351,22 @@ func _get_configuration_warnings() -> PackedStringArray:
 	return warnings
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#var dt: float = 0.0
-#func _process(delta):
-	#if not Engine.is_editor_hint(): return
-	##print(dt)
-	#dt += delta
-	#if dt > 1.0:
-		#dt = 0.0
-		#queue_redraw()
-		#clipping_container.queue_redraw()
+class V2i:
+	var x: int
+	var y: int
+	func _init(_x=0, _y=0):
+		x = _x
+		y = _y
+class R2i:
+	var x: int
+	var y: int
+	var w: int
+	var h: int
+	func _init(_x=0, _y=0, _w=0, _h=0): set_to(_x, _y, _w, _h)
+	func has_point(v: V2i):
+		return v.x >= x and v.x < x + w and v.y >= y and v.y < y + h
+	func set_to(_x=0, _y=0, _w=0, _h=0):
+		x = _x
+		y = _y
+		w = _w
+		h = _h
