@@ -1,4 +1,4 @@
-# DataView UI Control for Godot 4.x
+# ![icon](addons/godot-dataview/icon-64x64.png) DataView UI Control for Godot 4.x
 This add a control called DataView, which is made to display efficiently a lot of data, like the results of an SQL request (gotten the godot-sqlite project) or whichever data that a custom function returns.
 The control only renders the data shown to be efficient and can display a table with $`2^{53} - 1`$ rows maximum.
 
