@@ -87,6 +87,9 @@ class DataDisplay extends Control:
 			dataFunc = func(index): return [index, index*2, index*3, index*4, index*5, index*6]
 			_row_count = 10
 		else:
+			if data_provider == null: 
+				_width_content = 0
+				return
 			headers = data_provider.get_headers()
 			dataFunc = data_provider.get_row
 			_row_count = data_provider.get_row_count()
@@ -165,6 +168,7 @@ class DataDisplay extends Control:
 	
 	var resizing_col: int = -1
 	func _gui_input(event):
+		if data_provider == null: return
 		if event is InputEventMouseButton:
 			match event.button_index:
 				MOUSE_BUTTON_WHEEL_DOWN:
@@ -215,31 +219,6 @@ class DataDisplay extends Control:
 					cursor = Control.CURSOR_HSIZE
 					break
 			change_cursor(cursor)
-			#if mouse_default_cursor_shape != cursor:
-				#mouse_default_cursor_shape = cursor
-				#Input.set_default_cursor_shape(Input.CURSOR_ARROW)
-				#set_default_cursor_shape(Control.CURSOR_HSIZE)
-				#var e = InputEventMouseMotion.new()
-				#e.global_position = event.global_position
-				#e.position = Vector2(10, 10)
-				#e.relative = Vector2()
-				#Input.parse_input_event(e)
-
-			#change_cursor(cursor)
-			
-				#cell.x += 1
-			#var pos_y = pos.y - _row_height
-			#var pos_x = int(pos.x + 3) % 200
-			#if pos_y < 0 and pos_x < 5:
-				#mouse_default_cursor_shape = Control.CURSOR_HSIZE
-			#else:
-				#mouse_default_cursor_shape = Control.CURSOR_ARROW
-				
-			
-			#var cell_x = floor(pos_x / (200 + _cell_gap_h))
-			#var cell_y = floor(pos_y / _row_height_data)
-			#print(pos_y)
-			pass
 	
 	func _notification(what):
 		match what:
