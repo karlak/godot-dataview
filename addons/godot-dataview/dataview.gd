@@ -6,7 +6,7 @@ const DATA_VIEW_DEFAULT = preload("res://addons/godot-dataview/dataview_default.
 const PHI = 1.618
 
 @export var data_provider: Node = null: set = set_data_provider
-@export var col_sizes: Array[int] = []: set = set_col_sizes
+@export var col_sizes: Array[int] = []: set = set_col_sizes, get = get_col_sizes
 
 var stylebox_panel: StyleBox = DATA_VIEW_DEFAULT.get_stylebox("panel", "DataView")
 
@@ -81,15 +81,16 @@ class DataDisplay extends Control:
 		var dataFunc: Callable
 		if Engine.is_editor_hint():
 			headers = ["Header A", "Header B", "Header C", "Header D", "Header E", "Header F"]
-			dataFunc = func(index): return [index, index*2, index*3, index*4, index*5, index*6]
-			_row_count = 10
+			_row_count = 40
+			dataFunc = func(row_start, size): return range(0, min(size, _row_count - row_start)).map(func(index): return [index, index*2, index*3, index*4, index*5, index*6])
+			_update_v_scrollbar()
 		else:
 			if data_provider == null: 
 				_width_content = 0
 				return
 			headers = data_provider.get_headers()
-			dataFunc = data_provider.get_row
-			_row_count = data_provider.get_row_count()
+			dataFunc = data_provider.get_rows
+			update_rows_count()
 		while col_sizes.size() < headers.size():
 			col_sizes.append(200)
 		if col_sizes.size() > headers.size():
@@ -100,12 +101,17 @@ class DataDisplay extends Control:
 		var y = 0
 		draw_style_box(_stylebox_header, Rect2(x, y, size.x, _row_height))
 		draw_set_transform(_transform)
+		var x_left = -_transform.x
+		var x_right = x_left + size.x
+		var drawn_cols_range = [0, col_sizes.size()]
 		
 		if col_sizes.size() > 0 and col_sizes[0] <= 0:
 			draw_circle(Vector2(x + 4, y + _row_height / 2 + 1), 1, _header_font_color)
 		for i in headers.size():
 			if col_sizes[i] <= 0: continue
 			var width: int = max(col_sizes[i], 20)
+			if x + width < x_left: drawn_cols_range[0] = i+1
+			if x < x_right: drawn_cols_range[1] = i
 			
 			if i+1 < col_sizes.size() and col_sizes[i+1] <= 0:
 				draw_circle(Vector2(width + x + 4, y + _row_height / 2 + 1), 1, _header_font_color)
@@ -116,33 +122,36 @@ class DataDisplay extends Control:
 			if content_width > 0:
 				draw_string(_font_default, Vector2(content_x, y + text_offset_y), str(s), HORIZONTAL_ALIGNMENT_CENTER, content_width, _fontsize_default, _header_font_color, TextServer.JUSTIFICATION_NONE)
 			draw_style_box(_stylebox_tmp, Rect2(x + width, y, 1, _row_height))
-			#draw_rect(Rect2(content_x, y, content_width, _row_height), Color.from_hsv(0, 1, 1, 0.3), true)
 			x += width
 		if _width_content != x + 1:
 			_width_content = x + 1 # convert last pixel X coord to pixel count, not a magic number!
 			_update_h_scrollbar()
-		y += _row_height
+		y = _row_height
 		
-		var drawn_row_count = min(round(_get_shown_rows_count()), _row_count - _row_start_index)
-		for index in drawn_row_count:
-			index += _row_start_index
-			x = 0
-			var row_array = dataFunc.call(index)
-			for i in row_array.size():
-				if col_sizes[i] <= 0: continue
-				var width: int = max(col_sizes[i], 20)
-				var content_width: int = width - 2 * _cell_margin_h - _cell_gap_h
-				var content_x: int = x + _cell_margin_h
-				
-				var s = row_array[i]
-				if _selection.has_point(V2i.new(i, index)):
+		var rows_data: Array = dataFunc.call(_row_start_index, _get_shown_rows_count())
+		x = 0
+		for col_index in range(0, drawn_cols_range[0]):
+			if col_sizes[col_index] <= 0: continue
+			var width: int = max(col_sizes[col_index], 20)
+			x += width
+		for col_index in range(drawn_cols_range[0], drawn_cols_range[1] + 1):
+			y = _row_height
+			if col_sizes[col_index] <= 0: continue
+			var width: int = max(col_sizes[col_index], 20)
+			var content_width: int = width - 2 * _cell_margin_h - _cell_gap_h
+			var content_x: int = x + _cell_margin_h
+			for _i in rows_data.size():
+				var row_index = _i + _row_start_index
+				var s = rows_data[_i][col_index]
+				if _selection.has_point(V2i.new(col_index, row_index)):
 					draw_style_box(_stylebox_data_cell_selected, Rect2(x, y, width - _cell_gap_h, _row_height - _cell_gap_v))
 				else:
 					draw_style_box(_stylebox_data_cell, Rect2(x, y, width - _cell_gap_h, _row_height - _cell_gap_v))
 				if content_width > 0:
 					draw_string(_font_default, Vector2(content_x, y + text_offset_y), str(s), HORIZONTAL_ALIGNMENT_CENTER, content_width, _fontsize_default, _header_font_color,TextServer.JUSTIFICATION_CONSTRAIN_ELLIPSIS)
-				x += width
-			y += _row_height
+				y += _row_height
+			x += width
+			
 	
 	func get_cell_from_position(position: Vector2) -> V2i:
 		position -= _transform
@@ -264,8 +273,14 @@ class DataDisplay extends Control:
 		_h_scrollbar.page = size.x
 		_transform = Vector2(-_h_scrollbar.value, 0)
 		#_h_scrollbar.visible = _width_content > size.x
-		
-	func _get_shown_rows_count() -> float:
+	
+	func update_rows_count():
+		var tmp = data_provider.get_row_count()
+		if tmp != _row_count:
+			_row_count = tmp
+			_update_v_scrollbar()
+	
+	func _get_shown_rows_count() -> int:
 		var size_without_header = size.y - _row_height
 		return ceil(size_without_header / _row_height)
 		
@@ -281,7 +296,6 @@ class DataDisplay extends Control:
 		if old_data_provider and old_data_provider.has_signal("data_changed"):
 			old_data_provider.data_changed.disconnect(queue_redraw)
 		if data_provider and data_provider.has_signal("data_changed"):
-			print(data_provider.data_changed)
 			data_provider.data_changed.connect(queue_redraw)
 
 ####################################
@@ -314,6 +328,9 @@ func set_col_sizes(cs: Array):
 	col_sizes = cs
 	clipping_container.col_sizes = cs.duplicate()
 	clipping_container.queue_redraw()
+func get_col_sizes():
+	if Engine.is_editor_hint(): return col_sizes
+	return clipping_container.col_sizes
 
 func set_data_provider(dp):
 	if dp == data_provider: return
