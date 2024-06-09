@@ -1,43 +1,59 @@
 [gd_resource type="Theme" load_steps=6 format=3 uid="uid://b73y5fpqn5d46"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_k5eyu"]
-bg_color = Color(1, 1, 1, 0.0705882)
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_0u0na"]
+content_margin_left = 4.0
+content_margin_right = 4.0
+bg_color = Color(0.192157, 0.192157, 0.192157, 1)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
 border_color = Color(0.295867, 0.295866, 0.295866, 1)
+corner_detail = 1
+expand_margin_right = 1.0
+expand_margin_bottom = 1.0
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xbro7"]
-bg_color = Color(1, 1, 1, 0.258824)
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xvtf6"]
+bg_color = Color(0.521569, 0.521569, 0.521569, 1)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
 border_color = Color(0.295867, 0.295866, 0.295866, 1)
+expand_margin_right = 1.0
+expand_margin_bottom = 1.0
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_vafl6"]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xddlt"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 3.0
+bg_color = Color(0.0941176, 0.0941176, 0.0941176, 1)
+draw_center = false
+border_width_right = 1
+border_color = Color(0.462291, 0.462291, 0.46229, 1)
+corner_detail = 1
+expand_margin_right = 1.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_orfqu"]
 bg_color = Color(0.0941176, 0.0941176, 0.0941176, 1)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_fd8ty"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
 bg_color = Color(0.129412, 0.129412, 0.129412, 1)
 border_color = Color(0.517184, 0.517184, 0.517184, 1)
 border_blend = true
 
-[sub_resource type="StyleBoxLine" id="StyleBoxLine_stgmo"]
-color = Color(0.458405, 0.458405, 0.458405, 1)
-grow_begin = -4.0
-grow_end = -2.0
-vertical = true
-
 [resource]
-DataView/colors/header_font_color = Color(0.870588, 0.870588, 0.870588, 1)
-DataView/constants/cell_gap_h = -1
-DataView/constants/cell_gap_v = -1
-DataView/constants/cell_margin_h = 2
+DataView/colors/data_font = Color(0.870588, 0.870588, 0.870588, 1)
+DataView/colors/header_font = Color(0.870588, 0.870588, 0.870588, 1)
+DataView/constants/margin_scrollbar = 4
 DataView/font_sizes/default = 12
-DataView/styles/data_cell = SubResource("StyleBoxFlat_k5eyu")
-DataView/styles/data_cell_selected = SubResource("StyleBoxFlat_xbro7")
-DataView/styles/header_bar = SubResource("StyleBoxFlat_vafl6")
+DataView/styles/data = SubResource("StyleBoxFlat_0u0na")
+DataView/styles/data_selected = SubResource("StyleBoxFlat_xvtf6")
+DataView/styles/header = SubResource("StyleBoxFlat_xddlt")
+DataView/styles/header_bar = SubResource("StyleBoxFlat_orfqu")
 DataView/styles/panel = SubResource("StyleBoxFlat_fd8ty")
-DataView/styles/tmp = SubResource("StyleBoxLine_stgmo")

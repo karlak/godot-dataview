@@ -1,399 +1,135 @@
 @tool
-class_name DataView
+class_name Dataview
 extends Control
 
-const DATA_VIEW_DEFAULT = preload("res://addons/godot-dataview/dataview_default.tres")
-const PHI = 1.618
+const MAX_SINT32_VALUE: int = 2 ** 31 - 1
+const DataviewContent := preload("dataview_content.gd")
 
+# Props
 @export var data_provider: Node = null: set = set_data_provider
-@export var col_sizes: Array[int] = []: set = set_col_sizes, get = get_col_sizes
+@export var column_sizes: Array[int] = []: set = set_column_sizes, get = get_column_sizes
 
-var stylebox_panel: StyleBox = DATA_VIEW_DEFAULT.get_stylebox("panel", "DataView")
-
-var has_valid_data_provider: bool = false
+# Children
 var _v_scrollbar: VScrollBar = VScrollBar.new()
 var _h_scrollbar: HScrollBar = HScrollBar.new()
-var clipping_container: DataDisplay = null
+var _content_control: DataviewContent = null
+
+# Theme
+const DEFAULT_THEME: Theme = preload ("dataview_default.tres")
+const THEME_KEYS := [
+	"stylebox_panel",
+	"stylebox_header",
+	"stylebox_header_bar",
+	"stylebox_data",
+	"stylebox_data_selected",
+	"font_size_default",
+	"font_default",
+	"color_header_font",
+	"color_data_font",
+	"constant_margin_scrollbar",
+]
+var _theme_cache := {}
 
 
-class DataDisplay extends Control:
-	var _v_scrollbar: VScrollBar = VScrollBar.new()
-	var _h_scrollbar: HScrollBar = HScrollBar.new()
+func _theme_load():
+	for key:String in THEME_KEYS:
+		if key.begins_with("stylebox_"):
+			var name = key.trim_prefix("stylebox_")
+			if has_theme_stylebox(name, "DataView"): _theme_cache[key] = get_theme_stylebox(name, "DataView")
+			else: _theme_cache[key] = DEFAULT_THEME.get_stylebox(name, "DataView")
+			continue
+		if key.begins_with("color_"):
+			var name = key.trim_prefix("color_")
+			if has_theme_color(name, "DataView"): _theme_cache[key] = get_theme_color(name, "DataView")
+			else: _theme_cache[key] = DEFAULT_THEME.get_color(name, "DataView")
+			continue
+		if key.begins_with("constant_"):
+			var name = key.trim_prefix("constant_")
+			if has_theme_constant(name, "DataView"): _theme_cache[key] = get_theme_constant(name, "DataView")
+			else: _theme_cache[key] = DEFAULT_THEME.get_constant(name, "DataView")
+			continue
+		if key.begins_with("font_size_"):
+			var name = key.trim_prefix("font_size_")
+			if has_theme_font_size(name, "DataView"): _theme_cache[key] = get_theme_font_size(name, "DataView")
+			else: _theme_cache[key] = DEFAULT_THEME.get_font_size(name, "DataView") #get_theme_default_font_size()
+			continue
+		if key.begins_with("font_"):
+			var name = key.trim_prefix("font_")
+			if has_theme_font(name, "DataView"): _theme_cache[key] = get_theme_font(name, "DataView")
+			else: _theme_cache[key] = DEFAULT_THEME.get_font(name, "DataView")
+			continue
 	
-	var data_provider: Node = null
-	var col_sizes: Array[int] = []
-	
-	var _width_content: float = 0
-	var _row_height: int = 30
-	var _row_start_index: int = 0
-	var _row_count: int = 0
-	var _selection: R2i = R2i.new(0,0,1,1)
-	var _transform: Vector2 = Vector2()
-	
-	var _stylebox_tmp: StyleBox = DATA_VIEW_DEFAULT.get_stylebox("tmp", "DataView")
-	
-	var _stylebox_header: StyleBox = DATA_VIEW_DEFAULT.get_stylebox("header_bar", "DataView")
-	var _stylebox_data_cell: StyleBox = DATA_VIEW_DEFAULT.get_stylebox("data_cell", "DataView")
-	var _stylebox_data_cell_selected: StyleBox = DATA_VIEW_DEFAULT.get_stylebox("data_cell_selected", "DataView")
-	
-	var _header_font_color: Color = DATA_VIEW_DEFAULT.get_color("header_font_color", "DataView")
-	
-	var _cell_gap_h: int = DATA_VIEW_DEFAULT.get_constant("cell_gap_h", "DataView")
-	var _cell_gap_v: int = DATA_VIEW_DEFAULT.get_constant("cell_gap_v", "DataView")
-	var _cell_margin_h: int = DATA_VIEW_DEFAULT.get_constant("cell_margin_h", "DataView")
-	
-	var _font_default: Font = DATA_VIEW_DEFAULT.get_font("default", "DataView")
-	var _fontsize_default: int = DATA_VIEW_DEFAULT.get_font_size("default", "DataView")
+	_content_control._row_height = int(_theme_cache.font_size_default * 1.618)
+	_content_control._text_offset_y = _content_control._row_height / 2 + _theme_cache.font_size_default / 2
 
-	func reload_theme():
-		if has_theme_stylebox("tmp", "DataView"): _stylebox_tmp = get_theme_stylebox("tmp", "DataView")
-		
-		if has_theme_stylebox("header", "DataView"): _stylebox_header = get_theme_stylebox("header", "DataView")
-		if has_theme_stylebox("data_cell", "DataView"): _stylebox_data_cell = get_theme_stylebox("data_cell", "DataView")
-		if has_theme_stylebox("data_cell_selected", "DataView"): _stylebox_data_cell_selected = get_theme_stylebox("data_cell_selected", "DataView")
-		
-		if has_theme_color("header_font_color", "DataView"): _header_font_color = get_theme_color("header_font_color", "DataView")
-		
-		if has_theme_constant("cell_gap_h", "DataView"): _cell_gap_h = get_theme_constant("cell_gap_h", "DataView")
-		if has_theme_constant("cell_gap_v", "DataView"): _cell_gap_v = get_theme_constant("cell_gap_v", "DataView")
-		if has_theme_constant("cell_margin_h", "DataView"): _cell_margin_h = get_theme_constant("cell_margin_h", "DataView")
-		
-		if has_theme_font("default", "DataView"): _font_default = get_theme_font("default", "DataView")
-		if has_theme_font_size("default", "DataView"): _fontsize_default = get_theme_font_size("default", "DataView")
-		elif get_theme_default_font_size(): _fontsize_default = get_theme_default_font_size()
-		
-		_row_height = int(_fontsize_default * 1.618)
-	
-	func _init(dv: DataView):
-		_v_scrollbar = dv._v_scrollbar
-		_h_scrollbar = dv._h_scrollbar
-		clip_contents = true
-		mouse_filter = Control.MOUSE_FILTER_PASS
-		
-	func _ready():
-		reload_theme()
-		# Signals
-		_v_scrollbar.scrolling.connect(_scrolled_y)
-		_h_scrollbar.scrolling.connect(_scrolled_x)
-		
-	func _draw():
-		var headers: Array
-		var dataFunc: Callable
-		if Engine.is_editor_hint():
-			headers = ["Header A", "Header B", "Header C", "Header D", "Header E", "Header F"]
-			_row_count = 40
-			dataFunc = func(row_start, size): return range(0, min(size, _row_count - row_start)).map(func(index): return [index, index*2, index*3, index*4, index*5, index*6])
-			_update_v_scrollbar()
-		else:
-			if data_provider == null: 
-				_width_content = 0
-				return
-			headers = data_provider.get_headers()
-			dataFunc = data_provider.get_rows
-			update_rows_count()
-		while col_sizes.size() < headers.size():
-			col_sizes.append(200)
-		if col_sizes.size() > headers.size():
-			col_sizes.resize(headers.size())
-		
-		var text_offset_y = _row_height/2 + _fontsize_default/2
-		var x = 0
-		var y = 0
-		draw_style_box(_stylebox_header, Rect2(x, y, size.x, _row_height))
-		draw_set_transform(_transform)
-		var x_left = -_transform.x
-		var x_right = x_left + size.x
-		var drawn_cols_range = [0, col_sizes.size()]
-		
-		if col_sizes.size() > 0 and col_sizes[0] <= 0:
-			draw_circle(Vector2(x + 4, y + _row_height / 2 + 1), 1, _header_font_color)
-		for i in headers.size():
-			if col_sizes[i] <= 0: continue
-			var width: int = max(col_sizes[i], 20)
-			if x + width < x_left: drawn_cols_range[0] = i+1
-			if x < x_right: drawn_cols_range[1] = i
-			
-			if i+1 < col_sizes.size() and col_sizes[i+1] <= 0:
-				draw_circle(Vector2(width + x + 4, y + _row_height / 2 + 1), 1, _header_font_color)
-			
-			var content_width: int = width - 2 * _cell_margin_h - _cell_gap_h
-			var content_x: int = x + _cell_margin_h
-			var s: String = headers[i]
-			if content_width > 0:
-				draw_string(_font_default, Vector2(content_x, y + text_offset_y), str(s), HORIZONTAL_ALIGNMENT_CENTER, content_width, _fontsize_default, _header_font_color, TextServer.JUSTIFICATION_NONE)
-			draw_style_box(_stylebox_tmp, Rect2(x + width, y, 1, _row_height))
-			x += width
-		if _width_content != x + 1:
-			_width_content = x + 1 # convert last pixel X coord to pixel count, not a magic number!
-			_update_h_scrollbar()
-		y = _row_height
-		
-		var rows_data: Array = dataFunc.call(_row_start_index, _get_shown_rows_count())
-		x = 0
-		for col_index in range(0, drawn_cols_range[0]):
-			if col_sizes[col_index] <= 0: continue
-			var width: int = max(col_sizes[col_index], 20)
-			x += width
-		for col_index in range(drawn_cols_range[0], drawn_cols_range[1] + 1):
-			y = _row_height
-			if col_sizes[col_index] <= 0: continue
-			var width: int = max(col_sizes[col_index], 20)
-			var content_width: int = width - 2 * _cell_margin_h - _cell_gap_h
-			var content_x: int = x + _cell_margin_h
-			for _i in rows_data.size():
-				var row_index = _i + _row_start_index
-				var s = rows_data[_i][col_index]
-				if _selection.has_point(V2i.new(col_index, row_index)):
-					draw_style_box(_stylebox_data_cell_selected, Rect2(x, y, width - _cell_gap_h, _row_height - _cell_gap_v))
-				else:
-					draw_style_box(_stylebox_data_cell, Rect2(x, y, width - _cell_gap_h, _row_height - _cell_gap_v))
-				if content_width > 0:
-					draw_string(_font_default, Vector2(content_x, y + text_offset_y), str(s), HORIZONTAL_ALIGNMENT_CENTER, content_width, _fontsize_default, _header_font_color,TextServer.JUSTIFICATION_CONSTRAIN_ELLIPSIS)
-				y += _row_height
-			x += width
-			
-	
-	func get_cell_from_position(position: Vector2) -> V2i:
-		position -= _transform
-		position.y -= (_row_height+1)
-		var cell: V2i = V2i.new(0, -1)
-		for i in col_sizes.size():
-			var width = max(col_sizes[i], 20)
-			if col_sizes[i] <= 0: width = 0
-			width = max(0, width)
-			position.x -= width
-			if position.x <= 0: break
-			cell.x += 1
-		if cell.x >= col_sizes.size(): cell.x = -1
-		if position.y < 0: return cell
-		cell.y = floor(position.y / _row_height)
-		cell.y += _row_start_index
-		return cell
-	
-	func change_cursor(cursor: Control.CursorShape):
-		if cursor == mouse_default_cursor_shape: return
-		if cursor != -1: mouse_default_cursor_shape = cursor
-		var pos = get_global_mouse_position()
-		var e = InputEventMouseMotion.new()
-		e.global_position = pos
-		e.position = pos
-		Input.parse_input_event(e)
-	
-	var resizing_col: int = -1
-	func _gui_input(event):
-		if data_provider == null: return
-		if event is InputEventMouseButton:
-			match event.button_index:
-				MOUSE_BUTTON_WHEEL_DOWN:
-					accept_event()
-					if not event.pressed: return
-					_v_scrollbar.value += int(_v_scrollbar.page / 4.0)
-					_scrolled_y()
-				MOUSE_BUTTON_WHEEL_UP:
-					accept_event()
-					if not event.pressed: return
-					_v_scrollbar.value -= int(_v_scrollbar.page / 4.0)
-					_scrolled_y()
-				MOUSE_BUTTON_LEFT:
-					accept_event()
-					if !event.pressed:
-						if resizing_col > -1:
-							resizing_col = -1
-							change_cursor(-1)
-						return
-					var cell = get_cell_from_position(event.position)
-					if cell.y == -1:
-						var pos_x = event.position.x - _transform.x
-						for i in col_sizes.size():
-							var width = max(col_sizes[i], 20)
-							if col_sizes[i] <= 0: width = 0
-							pos_x -= width
-							if abs(pos_x) <= 3:
-								if event.double_click:
-									if i == 0 and col_sizes[0] <= 0:
-										col_sizes[0] = 100
-										queue_redraw()
-									elif (i+1) < col_sizes.size() and col_sizes[i+1] <= 0:
-										col_sizes[i+1] = 100
-										queue_redraw()
-									return
-								resizing_col = i
-								col_sizes[i] = width
-								return
-						return
-					_selection.set_to(cell.x, cell.y, 1, 1)
-					queue_redraw()
-		elif event is InputEventMouseMotion:
-			if resizing_col > -1:
-				col_sizes[resizing_col] += int(event.relative.x)
-				queue_redraw()
-				return
-			if event.position.y > _row_height:
-				change_cursor(Control.CURSOR_ARROW)
-				return
-			var pos_x = event.position.x - _transform.x
-			var cursor = Control.CURSOR_ARROW
-			for i in col_sizes.size():
-				var width = max(col_sizes[i], 20)
-				if col_sizes[i] <= 0: width = 0
-				pos_x -= width
-				if abs(pos_x) <= 3:
-					cursor = Control.CURSOR_HSIZE
-					break
-			change_cursor(cursor)
-	
-	func _notification(what):
-		match what:
-			NOTIFICATION_RESIZED:
-				_update_h_scrollbar()
-				_update_v_scrollbar()
-				queue_redraw()
-			NOTIFICATION_THEME_CHANGED:
-				reload_theme()
-				queue_redraw()
-	
-	func _scrolled_x():
-		_transform = Vector2(-_h_scrollbar.value, 0)
-		queue_redraw()
-	
-	func _scrolled_y():
-		if _row_start_index == _v_scrollbar.value: return
-		_row_start_index = _v_scrollbar.value
-		queue_redraw()
-	
-	func _update_v_scrollbar():
-		_v_scrollbar.max_value = _row_count
-		_v_scrollbar.page = floor(_get_shown_rows_count()) - 1
-		_row_start_index = _v_scrollbar.value
-		if _v_scrollbar.page >= _v_scrollbar.max_value: _v_scrollbar.max_value = 0
-
-	func _update_h_scrollbar():
-		if _width_content > size.x: _h_scrollbar.max_value = _width_content
-		else: _h_scrollbar.max_value = 0
-		_h_scrollbar.page = size.x
-		_transform = Vector2(-_h_scrollbar.value, 0)
-		#_h_scrollbar.visible = _width_content > size.x
-	
-	func update_rows_count():
-		var tmp = data_provider.get_row_count()
-		if tmp != _row_count:
-			_row_count = tmp
-			_update_v_scrollbar()
-	
-	func _get_shown_rows_count() -> int:
-		var size_without_header = size.y - _row_height
-		return ceil(size_without_header / _row_height)
-		
-	func set_data_provider(dp):
-		var old_data_provider = data_provider
-		data_provider = dp
-		queue_redraw()
-		if Engine.is_editor_hint(): return
-		_row_count = data_provider.get_row_count()
-		if _row_count > 0x1FFFFFFFFFFFFF:
-			print("data_provider.get_row_count() returned a value that is too large to be precisely represented on a variable of type double.")
-			push_warning("data_provider.get_row_count() returned a value that is too large to be precisely represented on a variable of type double.")
-		if old_data_provider and old_data_provider.has_signal("data_changed"):
-			old_data_provider.data_changed.disconnect(queue_redraw)
-		if data_provider and data_provider.has_signal("data_changed"):
-			data_provider.data_changed.connect(queue_redraw)
-
-####################################
-
-func _draw():
-	draw_style_box(stylebox_panel, Rect2(Vector2(), size))
+	_content_control.refresh_theme(_theme_cache)
 
 func _init():
-	clipping_container = DataDisplay.new(self)
-	clipping_container.position = Vector2(4, 4)
-
 	_v_scrollbar.rounded = true
-	_v_scrollbar.min_value = 0
-	_v_scrollbar.max_value = 100
-	_v_scrollbar.page = 10
-	
-	_h_scrollbar.min_value = 0
-	_h_scrollbar.page = 90
+	_v_scrollbar.name = "_v_scroll"
+	_h_scrollbar.name = "_h_scroll"
+	add_child(_v_scrollbar, false, INTERNAL_MODE_BACK)
+	add_child(_h_scrollbar, false, INTERNAL_MODE_BACK)
+
+	_content_control = DataviewContent.new(self)
+	_content_control.name = "_dataview_content"
+	add_child(_content_control, false, INTERNAL_MODE_FRONT)
+
+	clip_contents = true
 
 func _ready():
-	reload_theme()
-	add_child(clipping_container)
-	add_child(_v_scrollbar)
-	add_child(_h_scrollbar)
-
-func reload_theme():
-	if has_theme_stylebox("panel", "DataView"): stylebox_panel = get_theme_stylebox("panel", "DataView")
-
-func set_col_sizes(cs: Array):
-	col_sizes = cs
-	clipping_container.col_sizes = cs.duplicate()
-	clipping_container.queue_redraw()
-func get_col_sizes():
-	if Engine.is_editor_hint(): return col_sizes
-	return clipping_container.col_sizes
-
-func set_data_provider(dp):
-	if dp == data_provider: return
-	data_provider = dp
-	has_valid_data_provider = _get_configuration_warnings().is_empty()
-	clipping_container.set_data_provider(dp)
-	#update_configuration_warnings()
+	_theme_load()
 	_refresh_view()
+
+func _draw():
+	draw_style_box(_theme_cache.stylebox_panel, Rect2(Vector2(), size))
 
 func _notification(what):
 	match what:
-		NOTIFICATION_RESIZED: # Control changed size; check new size with get_size().
-			_refresh_view()
+		NOTIFICATION_RESIZED:
+			# _refresh_view()
+			pass
 		NOTIFICATION_THEME_CHANGED:
-			reload_theme()
+			_theme_load()
+			_refresh_view()
 			queue_redraw()
-		#NOTIFICATION_MOUSE_ENTER: pass # Mouse entered the area of this control.
-		#NOTIFICATION_MOUSE_EXIT: pass # Mouse exited the area of this control.
-		#NOTIFICATION_FOCUS_ENTER: pass # Control gained focus.
-		#NOTIFICATION_FOCUS_EXIT: pass # Control lost focus.
-		#NOTIFICATION_VISIBILITY_CHANGED: pass # Control became visible/invisible; check new status with is_visible().
-		#NOTIFICATION_MODAL_CLOSE: pass # For modal pop-ups, notification that the pop-up was closed.
 
 func _refresh_view():
-	const margin = 4
-	_v_scrollbar.position = Vector2(size.x - _v_scrollbar.size.x - margin, margin)
-	_v_scrollbar.size.y = size.y - _h_scrollbar.size.y - margin - margin
+	var _size = size
+	_size -= _theme_cache.stylebox_panel.get_minimum_size()
+
+	# _h_scrollbar.visible = _content_control._width_content > _content_control.size.x
+
+	var h_height := _h_scrollbar.get_combined_minimum_size().y if _h_scrollbar.visible else 0
+	var v_width := _v_scrollbar.get_combined_minimum_size().x if _v_scrollbar.visible else 0
 	
-	_h_scrollbar.position = Vector2(margin, size.y - _h_scrollbar.size.y - margin)
-	_h_scrollbar.size.x = size.x - _v_scrollbar.size.x - margin - margin
+	var lmar = _theme_cache.stylebox_panel.get_margin(SIDE_RIGHT) if is_layout_rtl() else _theme_cache.stylebox_panel.get_margin(SIDE_LEFT)
+	var rmar = _theme_cache.stylebox_panel.get_margin(SIDE_LEFT) if is_layout_rtl() else _theme_cache.stylebox_panel.get_margin(SIDE_RIGHT)
 
-	clipping_container.size = Vector2(_v_scrollbar.position.x - margin*2, _h_scrollbar.position.y - margin*2)
+	_h_scrollbar.set_anchor_and_offset(SIDE_LEFT, ANCHOR_BEGIN, lmar)
+	_h_scrollbar.set_anchor_and_offset(SIDE_RIGHT, ANCHOR_END, -rmar - v_width)
+	_h_scrollbar.set_anchor_and_offset(SIDE_TOP, ANCHOR_END, -h_height - _theme_cache.stylebox_panel.get_margin(SIDE_BOTTOM))
+	_h_scrollbar.set_anchor_and_offset(SIDE_BOTTOM, ANCHOR_END, -_theme_cache.stylebox_panel.get_margin(SIDE_BOTTOM))
 
-func _get_configuration_warnings() -> PackedStringArray:
-	var warnings = []
-	var required_method = func(name): if not data_provider.has_method(name): warnings.append(name)
-	if data_provider != null:
-		required_method.call("get_row_count")
-		required_method.call("get_headers")
-		pass
-	return warnings
+	_v_scrollbar.set_anchor_and_offset(SIDE_LEFT, ANCHOR_END, -v_width - rmar)
+	_v_scrollbar.set_anchor_and_offset(SIDE_RIGHT, ANCHOR_END, -rmar)
+	_v_scrollbar.set_anchor_and_offset(SIDE_TOP, ANCHOR_BEGIN, _theme_cache.stylebox_panel.get_margin(SIDE_TOP))
+	_v_scrollbar.set_anchor_and_offset(SIDE_BOTTOM, ANCHOR_END, -h_height - _theme_cache.stylebox_panel.get_margin(SIDE_BOTTOM))
 
+	_content_control.set_anchor_and_offset(SIDE_LEFT, ANCHOR_BEGIN, lmar)
+	_content_control.set_anchor_and_offset(SIDE_RIGHT, ANCHOR_END, -rmar - v_width - _theme_cache.constant_margin_scrollbar)
+	_content_control.set_anchor_and_offset(SIDE_TOP, ANCHOR_BEGIN, _theme_cache.stylebox_panel.get_margin(SIDE_TOP))
+	_content_control.set_anchor_and_offset(SIDE_BOTTOM, ANCHOR_END, -h_height - _theme_cache.stylebox_panel.get_margin(SIDE_BOTTOM))
+	pass
 
-class V2i:
-	var x: int
-	var y: int
-	func _init(_x=0, _y=0):
-		x = _x
-		y = _y
-	func _to_string():
-		return "V2i(%d,%d)" % [x, y]
-class R2i:
-	var x: int
-	var y: int
-	var w: int
-	var h: int
-	func _init(_x=0, _y=0, _w=0, _h=0): set_to(_x, _y, _w, _h)
-	func has_point(v: V2i):
-		return v.x >= x and v.x < x + w and v.y >= y and v.y < y + h
-	func set_to(_x=0, _y=0, _w=0, _h=0):
-		x = _x
-		y = _y
-		w = _w
-		h = _h
-	func _to_string():
-		return "R2i(%d,%d,%d,%d)" % [x, y, w, h]
+func set_data_provider(dp):
+	data_provider = dp
+	_content_control.set_data_provider(dp)
+	pass
+
+func set_column_sizes(sizes):
+	column_sizes = sizes
+	_content_control.set_column_sizes(sizes.duplicate())
+
+func get_column_sizes():
+	return column_sizes
