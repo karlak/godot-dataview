@@ -39,7 +39,9 @@ There is currently no way to edit data.
 ![Demo 02 animation](addons/godot-dataview/demo02.gif)
 
 I've been working on this control for this purpose. The data_provider object creates a worker thread, invoked using a semaphore to query the database when data is not already cached.
-It caches a few thousand rows every time it "cache miss", in this test.
+It caches a few thousand rows every time it "cache miss", in this test. 
+
+The following code is just a draft. It can sometimes request data that is already cached, so further optimization can be done.
 
 ```gdscript
 extends Node
