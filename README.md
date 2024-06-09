@@ -1,8 +1,8 @@
-# ![icon](addons/godot-dataview/icon-64x64.png) DataView UI Control for Godot 4.x
+# ![icon](addons/godot-dataview/_imgs/icon-64x64.png) DataView UI Control for Godot 4.x
 This add a control called DataView, which is made to display efficiently a lot of data, like the results of an SQL request (gotten the godot-sqlite project) or whichever data that a custom function returns.
 The control only renders the data shown to be efficient and can display a table with $`2^{53} - 1`$ rows maximum.
 
-![Demo 01 animation](addons/godot-dataview/demo01.gif)
+![Demo 01 animation](addons/godot-dataview/_imgs/demo01.gif)
 
 ## Usage
 First, you need to add the DataView control in the scene tree, then specify a data provider node in the property of the control.
@@ -36,7 +36,7 @@ There is currently no way to edit data.
 
 ## Demo 2 - SQLite query results
 
-![Demo 02 animation](addons/godot-dataview/demo02.gif)
+![Demo 02 animation](addons/godot-dataview/_imgs/demo02.gif)
 
 I've been working on this control for this purpose. The data_provider object creates a worker thread, invoked using a semaphore to query the database when data is not already cached.
 It caches a few thousand rows every time it "cache miss", in this test. 
