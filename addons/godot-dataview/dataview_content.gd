@@ -243,6 +243,7 @@ func set_column_sizes(sizes) -> void:
 		queue_redraw()
 
 func set_data_provider(dp) -> void:
+	if Engine.is_editor_hint(): return
 	if data_provider == dp: return
 	var old_data_provider = data_provider
 	data_provider = dp
